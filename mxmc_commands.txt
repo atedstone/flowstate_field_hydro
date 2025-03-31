@@ -1,0 +1,130 @@
+MxManagementCenter Remote Control 2.9.1
+---------------------------------------
+
+show?[<what=value>][&<where>][&monitor=<n>][&speaker[=on/off]
+
+show?<what=value>
+
+  show?ip=...          camera IP, host name, or factory IP
+  show?name=...        camera name or group name
+  show?camera=...      camera name
+  show?group=...       group name
+  show?sensor=...      sensor index (1,2)
+
+show?<where>
+
+  show?live            show live view
+  show?player          show player view
+  show?gridplayer      show grid player view
+  show?events          show research view
+  show?grid            show grid view
+  show?map             show graphic view
+  show?info            show info view
+
+  show?...&monitor=<n> show view on monitor with number <n>
+                       only for live, grid, graphic, info
+  show?...&speaker[=on/off] enable live audio playback
+                       only for live, grid
+
+  Example:
+  show?group=<name>&camera=<name>&grid
+
+show?devicestrip   [=on/off]   show device bar
+show?histogramstrip[=on/off]   show histogram bar
+show?camerastrip   [=on/off]   show camera bar
+show?groupstrip    [=on/off]   show group bar
+show?alarmstrip    [=on/off]   show alarm bar
+show?exportstrip   [=on/off]   show export bar
+
+camerasequencer[?on/off] enable camera sequencer
+groupsequencer[?on/off]  enable group sequencer
+                         only for grid, graphic
+
+speaker[?on/off]       enable live audio playback
+                       only for live, grid
+
+sound                  play default sound
+sound[?name=<name>][&volume=<percent>][&duration=<seconds>]
+
+message?text=...       message text
+alarm?text=...         alarm text
+alarm?ip=...           camera IP, host name, or factory IP
+alarm?camera=...       camera name
+alarm?<what=...>&sound=...
+
+fullscreen[?on/off]    enter/exit full screen mode
+fullsize[?on/off]      enter/exit full size mode
+fullview[?on/off]      enter/exit full screen and full size mode
+
+reload                 reconnect all camera connections
+  reload?ip=...        reconnect only given cameras (see show)
+
+playback?query=...     time, range, clip
+
+playback?<command>&speed=...&mode=...
+  playback?stop        stops playback
+  playback?jump        single step
+  playback?play        start playback
+  playback?play&speed=...   speedrate -16x...16x or -48x...48x (fileserver)
+  playback?play&mode=...    full, clip, event, preevent, marker, 1day, 1hour, 10min or 1min
+
+playback?seek=<date&time>[&timeout=<ms>]
+
+  Examples:
+  playback?seek=2018-10-01+12:00:00&timeout=10000
+  playback?speed=16&play
+
+exports?export[&camera=<name>][&ip=<ip>]
+       &profile=<profile>
+       &time=2018-10-01+12:00:00
+       [&before=10000&after=30000]
+       [&path=file://pathtoexportfolder]
+       [&noProgress]
+       [&viaCamera]
+       [&reImport]
+       [&delay=<n>]
+                       starts exporting a <time> range from a camera with predefined profile <profile>
+                       range <before> and <after> time given in msec
+                       <noProgress> exports in quite mode
+                       <viaCamera> forces to export recordings via the camera rather than via configured fileserver
+                       <reImport> automatically imports clip after export
+                       <delay> delays export <n> seconds as recordings may not be immediately available for the latest events
+
+exports?clear          clears the export bar
+exports?clearProgress  clears finished progress items
+exports?status         returns number of active exports
+exports?add&camera=<name>
+           &begin=2018-10-01+12:00:00&end=2018-10-01+12:10
+           &audio[=on/off]&ptz[=on/off]
+                       add given time range for camera to export bar
+exports?export&profile=<profile>
+       [&path=file://pathtoexportfolder]
+                       starts exporting the export bar with profile <profile>
+exports?create&profile=Test&format=AVI&framerate=25&resolution=1024x768
+       &audio[=on/off]&ptz[=on/off]&separate[=on/off]&max=1024
+                       create a profile <profile> with given parameters
+exports?delete&profile=Test
+                       delete the profile <profile>
+exports?set&profile=Test&framerate=12&resolution=420p
+exports?set&profile=Test&max=...   max file size in MB
+                       change parameters of profile <profile>
+
+snapshot               save snapshot
+
+list?<what>
+  list?cameras         camera names
+  list?cameraids       camera ids
+  list?views           view names
+  list?viewids         view ids
+  list?clips           clip names
+  list?clipsids        clip ids
+  list?groups          group names
+  list?groupids        group ids
+
+version
+version?minimum=...
+about
+help                   show this help
+raise                  bring main window to front
+home                   load home view
+quit                   quit the application

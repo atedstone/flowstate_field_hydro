@@ -1,0 +1,9 @@
+{
+    "format":"AVI",
+    "framerate": 25,
+    "resolution":"1920x1080",
+    "audio":"off",
+    "ptz":"off",
+    "separate":"on",
+    "quality":"medium"
+}
