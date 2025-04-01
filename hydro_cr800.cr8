@@ -1,0 +1,152 @@
+' FlowState Hydrology station
+' Andrew Tedstone, UNIL.
+' T107 temperature logging, power control of PoE cameras, power control of RPi/LoRaWAN, MaxSonar
+
+' Wiring:
+' C1 : relay cameras
+' SW12 : relay RPi
+' C4 : Rx MaxSonar (RS-232)
+' C2 : MaxSonar ranging start/stop
+' SE1 : T107
+' VX1 : T107
+
+SequentialMode
+
+Const BeginSummer = 69
+Const BeginWinter = 100
+Const LoBattThresh = 11.8
+Const LoBattResHyst = 0.3
+
+'Declare Variables and Units
+Public ModSecsWin As Long
+Public BattV
+Public PTemp_C
+Public AirTemp_C
+Public StateCameras As Boolean
+Public StateRPI As Boolean
+Public Low_Batt As Boolean
+Public SummerState As Boolean
+Public MaintenanceMode As Boolean
+
+Public SonarStr As String
+Public SonarFlt
+
+Public RTime(9)
+Alias RTime(9) = DayOfYear
+
+Units BattV=Volts
+Units PTemp_C=Deg C
+Units AirTemp_C=Deg C
+
+'Define Data Tables
+DataTable(Table1,True,-1)
+	DataInterval(0,10,Min,10)
+	Sample(1,AirTemp_C,FP2)
+	Sample(1,BattV,FP2)
+	Sample(1,SonarFlt,FP2)
+EndTable
+
+'Main Program
+BeginProg
+  
+  Low_Batt = True
+  MaintenanceMode = False
+ 	Battery(BattV)
+ 	
+  ' Initially switch on casmeras and ranging
+  PortSet(1, 1)
+  PortSet(2, 1)
+  
+  ' Open MaxSonar serial port
+  SerialOpen (Com2,9600,3,0,300)
+  
+	'Main Scan
+	Scan(10,Min,1,0)
+
+  '' -------------------------------------------------------------------	  
+  '' Year-round measurements
+	
+  ' Battery Voltage measurement 'BattV'
+	Battery(BattV)
+	
+	' Wiring Panel Temperature measurement 'PTemp_C'
+	PanelTemp(PTemp_C,_50Hz)
+	
+  ' T107 temperature
+  Therm107 (AirTemp_C,1,1,Vx1,0,250,1.0,0)
+  
+  ' MaxSonar
+  ' First bring ranging pin high and let sensor initialise
+  PortSet(2, 1)
+  Delay(0, 3, sec)
+  ' Get measurement
+  SerialIn (SonarStr,Com2,100,0,100)
+  ' Ranging low
+  PortSet(2, 0)
+  SonarFlt = SonarStr 
+ 
+
+  '' -------------------------------------------------------------------	  
+  '' Determine summer or winter mode
+  RealTime(RTime) 
+  If DayOfYear >= BeginSummer AND DayOfYear < BeginWinter Then
+      SummerState = True
+  Else
+	  'Winter
+	  SummerState = False
+  EndIf
+
+  '' -------------------------------------------------------------------
+  '' Camera control
+  If SummerState Then
+      ' Note that overall timing of this control is governed by MainScan freq!
+  		' Get seconds since 1990 and do a modulo divide by 600 (10 minutes as seconds)
+  		ModSecsWin=Public.TimeStamp(1,1) MOD 3600
+  		' Turn ON cameras for the first 10 mins of each hour
+  		If (ModSecsWin>=0 AND ModSecsWin<600) Then
+  			StateCameras = True
+  		Else
+        StateCameras = False
+  		EndIf
+  Else
+    StateCameras = False		
+  EndIf
+
+  '' -------------------------------------------------------------------
+  '' RPi/LoRaWAN control
+  If SummerState Then
+     StateRPI = True
+  Else
+    StateRPI = False
+  EndIf
+    
+  '' -------------------------------------------------------------------
+  '' Power/Battery management; this subscan duration determines how long the cameras stay on
+  SubScan(2, Min, 5)
+  	'Always turn OFF SW12 if battery drops below threshold
+  	If BattV < LoBattThresh Then Low_Batt = True
+  	' Only return to SW12 on once voltage has returned to above hystersis threshold
+  	If BattV >= LoBattThresh + LoBattResHyst Then Low_Batt = False
+  
+  	If Low_Batt Then StateCameras = False
+  	If Low_Batt Then StateRPI = False
+  	
+    If MaintenanceMode Then StateCameras = True
+    If MaintenanceMode Then StateRPI = True
+    
+    '' -------------------------------------------------------------------
+    '' Apply power on/off to the ports
+    PortSet(1, StateCameras)
+    SW12 (StateRPI )
+    
+    ' By default, turn camera off during the next sub-scan
+    If StateCameras Then StateCameras = False
+  Next SubScan
+	
+  '' -------------------------------------------------------------------	
+	'' Call Data Tables and Store Data
+	CallTable Table1
+
+	NextScan
+EndProg
+
