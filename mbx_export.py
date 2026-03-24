@@ -203,6 +203,7 @@ if __name__ == '__main__':
         type=lambda s: dt.datetime.strptime(s, '%Y-%m-%d'))
     p.add_argument('export_to', help='str, path to export the clips to', type=str)
     p.add_argument('-profile', default='greenland', type=str)
+    p.add_argument('-triage', type=bool, action='store_true')
 
     args = p.parse_args()
 
@@ -213,7 +214,16 @@ if __name__ == '__main__':
     if not os.path.exists(jfn):
         raise IOError(f'Specified JSON profile {jfn} does not exist.')
 
-    cli(args.date_start, args.date_finish, args.export_to, profile=args.profile)
+    # CLI above always iterates day-by-day, but default is to do hourly iteration
+    # within this. By setting the freq to 1D here then we reduce to a single clip 
+    # per day for triage.
+    if args.triage:
+        extra_args = {'freq':'1D'}
+    else:
+        extra_args = None
+
+
+    cli(args.date_start, args.date_finish, args.export_to, profile=args.profile, **extra_args)
 
     
     
