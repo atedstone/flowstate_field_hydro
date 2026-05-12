@@ -59,10 +59,10 @@ MBTX_DT_FMT = "%Y-%m-%d+%H:%M:%S"
 # Format of JSON config file
 JSON_FN_TEMPLATE = 'mxmc_profile_{}.json'
 
-def _exec_http(cmd, payload, print_url=False):
+def _exec_http(cmd, payload, print_url=True):
     """ Provide the basic functionality to send a GET command to ManagementCenter. """
-    url = os.path.join(MXRC_URL, cmd) 
-    
+    #url = os.path.join(MXRC_URL, cmd) 
+    url = MXRC_URL + "/" + cmd
     # Create the string of arguments
     payload_str = "&".join("%s=%s" % (k,v) for k,v in payload.items())
 
@@ -88,6 +88,9 @@ def _exec_http(cmd, payload, print_url=False):
 
 def list_cameras():
     r = _exec_http('list', {'cameras':1})
+    r = r.split('\n')
+    if r[-1] == '':
+        r = r[:-1]
     return r
 
 def setup_export_profile(profile):
@@ -113,11 +116,14 @@ def delete_export_profile(profile):
 def add_to_export_list(start, end):
     """ Add a time segment to the export list. """
     cmd = 'exports'
+    #cameras = list_cameras()
+    #for camera in ['ilh-cam1-pt']: #'ilh-cam2-lake']:
     args = {
         'add':1,
         'begin': start.strftime(MBTX_DT_FMT),
         'end': end.strftime(MBTX_DT_FMT),
-        'audio': 'off',
+        'audio': 'off'
+        #'camera': camera
     }
     r = _exec_http(cmd, args)
     return r
@@ -155,15 +161,17 @@ def cli(
     date_end, 
     export_path,
     profile='default',
-    freq='1h',    
-    window='59Min'
+    freq='2h',    
+    window='59Min',
+    offset=pd.Timedelta('0s')
     ):
     """ Command Line Interface for this script. """
 
     print(f'Looking for MxManagementCenter at {MXRC_URL}.')
 
-    print(f'Cameras recognised by MXMC:')
-    print(list_cameras())
+    print('Cameras recognised by MXMC:')
+    cameras = list_cameras()
+    print(cameras)
 
     # Create the customised Export profile in MXMC according to our JSON file.
     setup_export_profile(profile)
@@ -177,7 +185,7 @@ def cli(
         for t in times:
             # Every requested time frame gets added to the export bar, whether or not
             # it actually exists. MXMC only checks this once the Export is triggered.
-            add_to_export_list(t, t+pd.Timedelta(window))
+            add_to_export_list(t+offset, t+offset+pd.Timedelta(window))
         
         # Run the exports for this day
         print('\tRunning export list')
@@ -203,7 +211,7 @@ if __name__ == '__main__':
         type=lambda s: dt.datetime.strptime(s, '%Y-%m-%d'))
     p.add_argument('export_to', help='str, path to export the clips to', type=str)
     p.add_argument('-profile', default='greenland', type=str)
-    p.add_argument('-triage', type=bool, action='store_true')
+    p.add_argument('-triage', action='store_true')
 
     args = p.parse_args()
 
@@ -218,9 +226,9 @@ if __name__ == '__main__':
     # within this. By setting the freq to 1D here then we reduce to a single clip 
     # per day for triage.
     if args.triage:
-        extra_args = {'freq':'1D'}
+        extra_args = {'freq':'1D', 'offset':pd.Timedelta('12h')}
     else:
-        extra_args = None
+        extra_args = {}
 
 
     cli(args.date_start, args.date_finish, args.export_to, profile=args.profile, **extra_args)
